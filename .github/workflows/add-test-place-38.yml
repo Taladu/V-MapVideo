@@ -1,0 +1,44 @@
+name: Add test place 38
+
+on:
+  push:
+    branches: [test-place-38]
+    paths:
+      - '.github/workflows/add-test-place-38.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-place:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test-place-38
+      - name: Add one test place only
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          new_place = '                { name: "Bảo tàng Mỹ thuật TP.HCM", category: "Lịch sử & Văn hóa", coords: [106.69925, 10.76965], youtube: "your_youtube_embed_link" },\n'
+          if 'Bảo tàng Mỹ thuật TP.HCM' in s:
+              print('Test place already present; no change needed.')
+          else:
+              anchor = '                { name: "Dinh Độc Lập", category: "Lịch sử & Văn hóa", coords: [106.6955, 10.7769], youtube: "your_youtube_embed_link" },\n'
+              if anchor not in s:
+                  raise SystemExit('Anchor not found; refusing to modify index.html')
+              s = s.replace(anchor, anchor + new_place, 1)
+              p.write_text(s, encoding='utf-8')
+      - name: Commit test point
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No index change"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "test: add Fine Arts Museum as place 38"
+          git push origin HEAD:test-place-38
