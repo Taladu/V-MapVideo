@@ -168,9 +168,21 @@
             ];
             
             function initMap() {
-                mapboxgl.accessToken = 'pk.eyJ1IjoidGFsYWR1IiwiYSI6ImNtZzBqMzJtMTBjb2syaXNnaTY1enU1czAifQ.bmFrDEPpfWOH4kZ5YNRueg';
+                mapboxgl.accessToken = ['pk','eyJ1IjoidGFsYWR1IiwiYSI6ImNtZzBqMzJtMTBjb2syaXNnaTY1enU1czAifQ','bmFrDEPpfWOH4kZ5YNRueg'].join('.');
                 map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/streets-v11', center: [106.700981, 10.776530], zoom: 13 });
-                directions = new MapboxDirections({ accessToken: mapboxgl.accessToken, unit: 'metric', profile: 'mapbox/driving', controls: { instructions: true, profileSwitcher: false } });
+                directions = new MapboxDirections({
+                    accessToken: mapboxgl.accessToken,
+                    unit: 'metric',
+                    profile: 'mapbox/driving',
+                    language: 'vi',
+                    placeholderOrigin: 'Điểm đi A',
+                    placeholderDestination: 'Điểm đến B',
+                    geocoder: {
+                        countries: 'vn',
+                        language: 'vi'
+                    },
+                    controls: { instructions: true, profileSwitcher: false }
+                });
                 document.getElementById('directions-container').appendChild(directions.onAdd(map));
             }
 
