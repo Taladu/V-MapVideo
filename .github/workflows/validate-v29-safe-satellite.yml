@@ -39,6 +39,7 @@ jobs:
           node --check mapbox-token-safety.test.cjs
           node --check v29.3-golden-style.test.cjs
           node --check v29.3-poi-xss.test.cjs
+          node --check repo-security-audit.test.cjs
           node --check v28-safe-dual-geometry.test.cjs
           node --check v28-safe-hit-layer.test.cjs
           node --check v28-safe-library-priority.test.cjs
@@ -81,6 +82,7 @@ jobs:
           node mapbox-token-safety.test.cjs
           node v29.3-golden-style.test.cjs
           node v29.3-poi-xss.test.cjs
+          node repo-security-audit.test.cjs
 
       - name: Write build info
         shell: bash
