@@ -15,12 +15,12 @@
 <body>
   <div id="map"></div>
   <div id="status" class="status">Đang tải tuyến GPS…</div>
-<script src="mapbox-token.js"></script>
+<script src="mapbox-token-runtime.js?v=29c"></script>
 <script>
 const statusEl=document.getElementById('status');
 const configuredToken=typeof window.VMAP_MAPBOX_TOKEN==='string'?window.VMAP_MAPBOX_TOKEN.trim():'';
 if(!configuredToken.startsWith('pk.')){
-  statusEl.textContent='❌ Chưa cấu hình Mapbox token. Xem README.md.';
+  statusEl.textContent='❌ Chưa có Mapbox token. Hãy nhập token trong hộp cấu hình đang hiển thị.';
   throw new Error('Thiếu window.VMAP_MAPBOX_TOKEN trong mapbox-token.js');
 }
 mapboxgl.accessToken=configuredToken;
