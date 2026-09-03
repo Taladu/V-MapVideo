@@ -54,6 +54,8 @@ function boot(map) {
     const context = {
         console,
         document: { getElementById: id => id === 'toggleSatelliteBtn' ? button : null },
+        setTimeout(handler) { return 1; },
+        clearTimeout() {},
         window: {
             addEventListener(type, handler) { windowListeners[type] = handler; }
         }
@@ -68,12 +70,12 @@ function boot(map) {
 {
     const map = makeMap({ imports: [{ id: 'basemap' }], layers: [] });
     const { button, context } = boot(map);
-    assert.equal(button.disabled, true, 'button must wait for the style');
+    assert.equal(button.disabled, false, 'button remains clickable while the style finishes');
     map.markStyleLoaded();
     map.emit('style.load');
     assert.equal(button.disabled, false, 'button must enable after safe layer install');
     assert.equal(map.sources['vmap-satellite-source'].url, 'mapbox://mapbox.satellite');
-    assert.equal(map.layers['vmap-satellite-layer'].slot, 'bottom');
+    assert.equal(map.layers['vmap-satellite-layer'].slot, 'middle');
     assert.equal(map.layers['vmap-satellite-layer'].layout.visibility, 'none');
 
     button.click();
@@ -100,4 +102,4 @@ function boot(map) {
     assert.equal(addLayerCall[1].slot, undefined);
 }
 
-console.log('PASS V29 satellite layer: no style reload, stable ordering and visibility-only toggle');
+console.log('PASS V29.1 satellite layer: no style reload, visible Standard slot, retry-safe toggle');
