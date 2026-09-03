@@ -35,6 +35,7 @@ jobs:
           node --check exact-ab-reverse-regression.test.cjs
           node --check satellite-layer-toggle.test.cjs
           node --check mapbox-token-safety.test.cjs
+          node --check v29.3-golden-style.test.cjs
           node --check v28-safe-dual-geometry.test.cjs
           node --check v28-safe-hit-layer.test.cjs
           node --check v28-safe-library-priority.test.cjs
@@ -75,6 +76,7 @@ jobs:
           node v28-safe-dual-geometry.test.cjs
           node satellite-layer-toggle.test.cjs
           node mapbox-token-safety.test.cjs
+          node v29.3-golden-style.test.cjs
 
       - name: Write build info
         shell: bash
