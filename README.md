@@ -1,30 +1,33 @@
-# V29.2 CLEAN SATELLITE LAYER
+# V29.3 SAFE SATELLITE PRELOAD
 
-- Nút 🛰️ chuyển **Bản đồ thường ↔ Vệ tinh** bằng raster layer độc lập.
-- Không thay toàn bộ style, không xóa source/layer của V28/V29.
-- Mapbox Standard ưu tiên slot `middle` để ảnh vệ tinh hiện rõ.
-- Khi bật vệ tinh: ẩn 3D basemap, ẩn lớp `3d-buildings` tùy chỉnh, giảm nhãn POI/transit/place gây rối.
-- **Giữ nhãn đường**, GPS-video, Directions, POI V-Map, popup, điểm A/B và dữ liệu tuyến.
-- Khi tắt vệ tinh: khôi phục đúng trạng thái cấu hình basemap và độ mờ 3D trước đó.
-- Nếu người dùng đổi 2D/3D trong lúc đang ở vệ tinh, V29.2 ghi nhớ trạng thái mới nhưng vẫn giữ ảnh vệ tinh sạch; khi quay về bản đồ thường sẽ phục hồi đúng.
-- Logic A→B/B→A và toàn bộ dữ liệu GPS-video không thay đổi.
+V29.3 nâng an toàn từ V29.2 sau khi test thực tế cho thấy hai vấn đề: 3D Standard chưa ẩn hết trên GL JS 3.4.0 và raster vệ tinh có thể nạp thành mảng ngay sau khi bật/xoay.
+
+## Thay đổi V29.3
+
+- Nâng Mapbox GL JS từ `3.4.0` lên `3.29.0`; Mapbox Directions vẫn giữ nguyên `4.1.1`.
+- Không dùng `map.setStyle()`: style V-Map hiện tại, Directions, GPS-video và POI không bị tháo ra rồi gắn lại.
+- Raster `mapbox://mapbox.satellite` được giữ **visible với opacity 0.0001** khi đang ở bản đồ thường để Mapbox có thể chuẩn bị tile trước.
+- Khi bật 🛰️, chỉ đổi raster opacity lên `1`; khi tắt hạ về `0.0001`, không dùng `visibility:none`.
+- Với Standard import, V29.3 tắt 3D objects/buildings/trees/landmarks/facades và giảm nhãn POI/transit/place trong chế độ vệ tinh.
+- Giữ nhãn đường để định hướng.
+- Lớp `3d-buildings` tùy chỉnh của V-Map cũng được ẩn khi bật vệ tinh và khôi phục đúng opacity cũ khi tắt.
+- Nếu bấm 2D/3D trong lúc đang ở vệ tinh, trạng thái 3D mới được ghi nhớ nhưng vẫn bị ẩn trên ảnh vệ tinh; quay về bản đồ thường sẽ phục hồi trạng thái đó.
+- Không thay đổi logic A→B/B→A, GPS matcher/resolver, hit layer, popup, POI, dữ liệu video hay tọa độ tuyến.
+
+## Bảo vệ hồi quy V29.3
+
+GitHub Actions khóa hash của các file lõi V29.2 để V29.3 không vô tình sửa:
+- `script.js`
+- `gps-route-overlay.js`
+- `gps-video-library.js`
+- `vmap-runtime-bridge.js`
+- `exact-ab-reverse-regression.test.cjs`
+
+Ngoài ra vẫn chạy Golden V19 data hashes, exact A/B reverse, V28 geometry/hit-layer/library tests, token safety và satellite regression.
 
 ## Cấu hình Mapbox an toàn
 
-1. Mở V-Map bằng VS Code + Live Server.
-2. Lần đầu chạy, V-Map tự hiện hộp **Cấu hình Mapbox lần đầu**.
-3. Dán public token Mapbox bắt đầu bằng `pk.` rồi bấm **Lưu & mở V-Map**.
-4. Token chỉ lưu trong `localStorage` của trình duyệt trên máy đang dùng, không ghi vào source code và không commit lên GitHub.
-5. Khi triển khai thật, giới hạn token theo đúng domain V-MapVideo trong tài khoản Mapbox.
-
-Nếu cần xóa token đã lưu để nhập lại:
-
-```js
-window.VMAP_MAPBOX_TOKEN_RUNTIME.clear();
-location.reload();
-```
-
-`mapbox-token.js` vẫn nằm trong `.gitignore` để tránh commit nhầm nếu sau này dùng cấu hình local/deployment riêng.
+Token vẫn dùng cơ chế cấu hình lần đầu và lưu cục bộ trong `localStorage`; token thật không được commit lên GitHub.
 
 # NÂNG CẤP 1.3.2 — “Xem từ đây → điểm B”
 

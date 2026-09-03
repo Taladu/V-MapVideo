@@ -3,9 +3,19 @@ const vm = require('vm');
 const assert = require('assert');
 
 const source = fs.readFileSync('satellite-layer-toggle.js', 'utf8');
+const index = fs.readFileSync('index.html', 'utf8');
+const gpsRouteTest = fs.readFileSync('gps-route-test.html', 'utf8');
+
 assert(!/\bmap\s*\.\s*setStyle\s*\(/.test(source), 'Satellite toggle must never replace the map style');
 assert(!/\bmap\s*\.\s*removeLayer\s*\(/.test(source), 'Satellite toggle must never remove existing layers');
 assert(!/\bmap\s*\.\s*removeSource\s*\(/.test(source), 'Satellite toggle must never remove existing sources');
+
+const glVersion = '3.29.0';
+assert(index.includes(`mapbox-gl-js/v${glVersion}/mapbox-gl.css`), 'index must use Mapbox GL JS 3.29.0 CSS');
+assert(index.includes(`mapbox-gl-js/v${glVersion}/mapbox-gl.js`), 'index must use Mapbox GL JS 3.29.0 JS');
+assert(gpsRouteTest.includes(`mapbox-gl-js/v${glVersion}/mapbox-gl.css`), 'GPS test must use the same Mapbox GL JS version');
+assert(gpsRouteTest.includes(`mapbox-gl-js/v${glVersion}/mapbox-gl.js`), 'GPS test JS must match the app version');
+assert(index.includes('mapbox-gl-directions/v4.1.1/mapbox-gl-directions.js'), 'Directions plugin version must stay unchanged');
 
 function makeButton() {
     const listeners = {};
@@ -32,6 +42,10 @@ function makeMap(style) {
     const calls = [];
     const config = {
         show3dObjects: true,
+        show3dBuildings: true,
+        show3dTrees: true,
+        show3dLandmarks: true,
+        show3dFacades: true,
         showPointOfInterestLabels: true,
         showTransitLabels: true,
         showPlaceLabels: true,
@@ -54,8 +68,10 @@ function makeMap(style) {
         config,
         paint,
         on(type, handler) { (handlers[type] ??= []).push(handler); },
+        once(type, handler) { (handlers[type] ??= []).push(handler); },
         emit(type) { for (const handler of handlers[type] || []) handler(); },
         isStyleLoaded() { return styleLoaded; },
+        isSourceLoaded(id) { return Boolean(sources[id]); },
         markStyleLoaded() { styleLoaded = true; },
         getStyle() { return style; },
         getSource(id) { return sources[id]; },
@@ -66,9 +82,13 @@ function makeMap(style) {
         getLayer(id) { return layers[id]; },
         addLayer(definition, beforeId) {
             layers[definition.id] = definition;
+            paint[definition.id] = { ...(definition.paint || {}) };
             calls.push(['addLayer', definition, beforeId]);
         },
         setLayoutProperty(id, property, value) {
+            layers[id] ??= { id };
+            layers[id].layout ??= {};
+            layers[id].layout[property] = value;
             calls.push(['setLayoutProperty', id, property, value]);
         },
         getConfigProperty(importId, property) {
@@ -108,6 +128,7 @@ function boot(map) {
         setTimeout() { return 1; },
         clearTimeout() {},
         window: {
+            mapboxgl: { version: '3.29.0' },
             addEventListener(type, handler) { windowListeners[type] = handler; }
         }
     };
@@ -117,65 +138,87 @@ function boot(map) {
     return { satelliteButton, threeDButton, context };
 }
 
-// Mapbox Standard/import style: satellite uses middle slot and cleans only basemap clutter.
+// Standard/import style: raster stays visible at tiny opacity to preload tiles.
 {
     const map = makeMap({
         imports: [{ id: 'basemap' }],
         layers: [
             { id: '3d-buildings', type: 'fill-extrusion' },
             { id: 'vmap-gps-video-line', type: 'line' },
-            { id: 'places-source-layer', type: 'symbol' }
+            { id: 'vmap-gps-video-hit', type: 'line' },
+            { id: 'directions-route-line', type: 'line' },
+            { id: 'unclustered-point', type: 'symbol' }
         ]
     });
     const { satelliteButton, context } = boot(map);
-    assert.equal(satelliteButton.disabled, false, 'button remains clickable while style finishes');
+    assert.equal(satelliteButton.disabled, false);
 
     map.markStyleLoaded();
     map.emit('style.load');
 
+    const sat = map.layers['vmap-satellite-layer'];
     assert.equal(map.sources['vmap-satellite-source'].url, 'mapbox://mapbox.satellite');
-    assert.equal(map.layers['vmap-satellite-layer'].slot, 'middle');
-    assert.equal(map.layers['vmap-satellite-layer'].layout.visibility, 'none');
+    assert.equal(sat.slot, 'middle');
+    assert.equal(sat.layout.visibility, 'visible', 'satellite layer must never be visibility:none');
+    assert.equal(map.paint['vmap-satellite-layer']['raster-opacity'], 0.0001, 'normal mode must keep a tiny preload opacity');
 
     satelliteButton.click();
     assert.equal(context.window.VMAP_SATELLITE_LAYER.isEnabled(), true);
     assert.equal(satelliteButton.attrs['aria-pressed'], 'true');
     assert(satelliteButton.classes.has('is-active'));
+    assert.equal(map.paint['vmap-satellite-layer']['raster-opacity'], 1);
 
-    assert.equal(map.config.show3dObjects, false);
-    assert.equal(map.config.showPointOfInterestLabels, false);
-    assert.equal(map.config.showTransitLabels, false);
-    assert.equal(map.config.showPlaceLabels, false);
+    for (const key of [
+        'show3dObjects',
+        'show3dBuildings',
+        'show3dTrees',
+        'show3dLandmarks',
+        'show3dFacades',
+        'showPointOfInterestLabels',
+        'showTransitLabels',
+        'showPlaceLabels'
+    ]) {
+        assert.equal(map.config[key], false, `${key} must be disabled in satellite mode`);
+    }
     assert.equal(map.config.showRoadLabels, true, 'road labels remain unchanged');
     assert.equal(map.paint['3d-buildings']['fill-extrusion-opacity'], 0);
 
     assert(
-        map.calls.some(call =>
+        !map.calls.some(call =>
             call[0] === 'setLayoutProperty' &&
-            call[1] === 'vmap-satellite-layer' &&
-            call[3] === 'visible'
+            ['vmap-gps-video-line','vmap-gps-video-hit','directions-route-line','unclustered-point'].includes(call[1])
         ),
-        'satellite raster must become visible'
+        'V-Map GPS/route/POI layers must never have visibility changed'
     );
     assert(
         !map.calls.some(call =>
-            call[0] === 'setLayoutProperty' &&
-            call[1] !== 'vmap-satellite-layer'
+            call[0] === 'setPaintProperty' &&
+            ['vmap-gps-video-line','vmap-gps-video-hit','directions-route-line','unclustered-point'].includes(call[1])
         ),
-        'GPS-video and other V-Map layers must never have visibility changed'
+        'V-Map GPS/route/POI paint must never be changed'
     );
 
     satelliteButton.click();
     assert.equal(context.window.VMAP_SATELLITE_LAYER.isEnabled(), false);
-    assert.equal(map.config.show3dObjects, true);
-    assert.equal(map.config.showPointOfInterestLabels, true);
-    assert.equal(map.config.showTransitLabels, true);
-    assert.equal(map.config.showPlaceLabels, true);
-    assert.equal(map.config.showRoadLabels, true);
+    assert.equal(map.paint['vmap-satellite-layer']['raster-opacity'], 0.0001);
+
+    for (const key of [
+        'show3dObjects',
+        'show3dBuildings',
+        'show3dTrees',
+        'show3dLandmarks',
+        'show3dFacades',
+        'showPointOfInterestLabels',
+        'showTransitLabels',
+        'showPlaceLabels',
+        'showRoadLabels'
+    ]) {
+        assert.equal(map.config[key], true, `${key} must restore after leaving satellite mode`);
+    }
     assert.equal(map.paint['3d-buildings']['fill-extrusion-opacity'], 1);
 }
 
-// Legacy/custom style: imagery stays below the first text label; no Standard config mutation.
+// Legacy/custom style remains supported without Standard config calls.
 {
     const map = makeMap({
         imports: [],
@@ -192,4 +235,4 @@ function boot(map) {
     assert(!map.calls.some(call => call[0] === 'setConfigProperty'));
 }
 
-console.log('PASS V29.2 clean satellite: reversible 3D/label cleanup, GPS-video untouched');
+console.log('PASS V29.3: GL 3.29, warm satellite preload, reversible 3D/label cleanup, core overlays untouched');

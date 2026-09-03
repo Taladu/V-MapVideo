@@ -1,9 +1,9 @@
-name: Validate V29.2 Clean Satellite
+name: Validate V29.3 Safe Satellite Preload
 
 on:
   push:
     branches:
-      - v29-safe-satellite-layer
+      - v29-safe-satellite-layer\n      - v29.3-safe-satellite-preload
   pull_request:
     branches:
       - main
@@ -55,6 +55,16 @@ jobs:
           test "$(git hash-object route-video-library.json)" = "f01926102101db35ca590e08e08fe089f6768403"
           echo "PASS Golden V19 data blobs unchanged"
 
+      - name: Lock V29.2 core code
+        shell: bash
+        run: |
+          test "$(git hash-object script.js)" = "7e354d1dc96ca208500d67a9c54a5d9c41083dd0"
+          test "$(git hash-object gps-route-overlay.js)" = "c816f293638f3000c830b00a9b9c6bb22bb2a583"
+          test "$(git hash-object gps-video-library.js)" = "68899332ee5ceadc43e52ad906ceca8fd761b5b5"
+          test "$(git hash-object vmap-runtime-bridge.js)" = "9907e62e8e47bdc64680097a72262cf21ec3f16f"
+          test "$(git hash-object exact-ab-reverse-regression.test.cjs)" = "5afcbede9e14f431645434e787da71f5b58bf1b6"
+          echo "PASS V29.2 core code unchanged"
+
       - name: Run regression tests
         shell: bash
         run: |
@@ -69,18 +79,18 @@ jobs:
       - name: Write build info
         shell: bash
         run: |
-          printf '{"commitSha":"%s","ref":"%s","build":"v29.2-clean-satellite"}\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" > build-info.json
+          printf '{"commitSha":"%s","ref":"%s","build":"v29.3-safe-satellite-preload"}\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" > build-info.json
 
       - name: Package V29 Safe Satellite Layer
         shell: bash
         run: |
-          zip -r V-MapVideo-CLEAN-29.2-clean-satellite.zip . \
-            -x '.git/*' 'V-MapVideo-CLEAN-29.2-clean-satellite.zip'
+          zip -r V-MapVideo-CLEAN-29.3-safe-satellite-preload.zip . \
+            -x '.git/*' 'V-MapVideo-CLEAN-29.3-safe-satellite-preload.zip'
 
       - name: Upload V29 Safe Satellite Layer
         uses: actions/upload-artifact@v4
         with:
-          name: V-MapVideo-CLEAN-29.2-clean-satellite
-          path: V-MapVideo-CLEAN-29.2-clean-satellite.zip
+          name: V-MapVideo-CLEAN-29.3-safe-satellite-preload
+          path: V-MapVideo-CLEAN-29.3-safe-satellite-preload.zip
           if-no-files-found: error
           retention-days: 30
