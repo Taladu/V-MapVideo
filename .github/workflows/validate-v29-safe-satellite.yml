@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - v29-safe-satellite-layer\n      - v29.3-safe-satellite-preload
+      - v29.3-security-hardening
   pull_request:
     branches:
       - main
+      - v29.3-golden-rc1
 
 permissions:
   contents: read
@@ -36,6 +38,7 @@ jobs:
           node --check satellite-layer-toggle.test.cjs
           node --check mapbox-token-safety.test.cjs
           node --check v29.3-golden-style.test.cjs
+          node --check v29.3-poi-xss.test.cjs
           node --check v28-safe-dual-geometry.test.cjs
           node --check v28-safe-hit-layer.test.cjs
           node --check v28-safe-library-priority.test.cjs
@@ -77,6 +80,7 @@ jobs:
           node satellite-layer-toggle.test.cjs
           node mapbox-token-safety.test.cjs
           node v29.3-golden-style.test.cjs
+          node v29.3-poi-xss.test.cjs
 
       - name: Write build info
         shell: bash

@@ -744,9 +744,9 @@ fabWrappers.forEach(btn => btn.classList.remove('is-faded'));
                 
                 customPopupContent.innerHTML = `
                     <button class="custom-popup-close-btn">&times;</button>
-                    <h3>${place.name}</h3>
+                    <h3>${escapeHtml(place.name)}</h3>
                     <div class="youtube-placeholder" data-youtube-src="${place.youtube}">
-                        <img src="${thumbnailUrl}" alt="Video thumbnail for ${place.name}">
+                        <img src="${thumbnailUrl}" alt="Video thumbnail for ${escapeHtml(place.name)}">
                         <div class="play-button-overlay"></div>
                     </div>
                     <div class="popup-actions">
@@ -1026,13 +1026,13 @@ fabWrappers.forEach(btn => btn.classList.remove('is-faded'));
                     const categoryGroup = document.createElement('div');
                     const categoryTitle = document.createElement('h3'); 
                     categoryTitle.className = 'category-title';
-                    categoryTitle.innerHTML = `${category} <span>▶</span>`; 
+                    categoryTitle.innerHTML = `${escapeHtml(category)} <span>▶</span>`; 
                     const itemsContainer = document.createElement('div'); 
                     itemsContainer.className = 'location-items-container';
                     groupedPlaces[category].forEach(place => { 
                         const listItem = document.createElement('div'); 
                         listItem.className = 'location-item'; 
-                        listItem.innerHTML = `<img src="${iconUrl}" alt="icon"><h4>${place.name}</h4>`; 
+                        listItem.innerHTML = `<img src="${iconUrl}" alt="icon"><h4>${escapeHtml(place.name)}</h4>`; 
                          listItem.addEventListener('click', () => { triggerFlycamAnimation(place); }); 
                         itemsContainer.appendChild(listItem); 
                     });
