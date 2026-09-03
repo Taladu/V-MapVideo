@@ -30,6 +30,7 @@ jobs:
           node --check gps-route-overlay.js
           node --check script.js
           node --check satellite-layer-toggle.js
+          node --check mapbox-token-runtime.js
           node --check gps-video-library.js
           node --check exact-ab-reverse-regression.test.cjs
           node --check satellite-layer-toggle.test.cjs
