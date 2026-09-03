@@ -23,11 +23,20 @@ const ignored = fs.readFileSync('.gitignore', 'utf8');
 assert(/^mapbox-token\.js$/m.test(ignored), 'mapbox-token.js must stay ignored');
 
 const index = fs.readFileSync('index.html', 'utf8');
-assert(index.includes('<script src="mapbox-token.js"></script>'), 'index must load the local token config');
-assert(index.indexOf('mapbox-token.js') < index.indexOf('script.js?v='), 'token config must load before script.js');
+assert(index.includes('<script src="mapbox-token-runtime.js?v=29c"></script>'), 'index must load safe runtime token setup');
+assert(!index.includes('<script src="mapbox-token.js"></script>'), 'downloaded build must not depend on a missing local token file');
+assert(index.indexOf('mapbox-token-runtime.js') < index.indexOf('script.js?v='), 'runtime token setup must load before script.js');
+
+const runtime = fs.readFileSync('mapbox-token-runtime.js', 'utf8');
+assert(runtime.includes('localStorage'), 'runtime setup must store token locally in the browser');
+assert(runtime.includes('vmap_mapbox_public_token_v1'), 'runtime setup must use the expected isolated storage key');
+assert(runtime.includes('showSetup'), 'runtime setup must provide first-run configuration UI');
 
 const app = fs.readFileSync('script.js', 'utf8');
 assert(app.includes('window.VMAP_MAPBOX_TOKEN'), 'app must read the runtime token');
 assert(app.includes('if (!initMap()) return;'), 'app must stop cleanly when token config is missing');
 
-console.log('PASS Mapbox token is externalized and excluded from GitHub source');
+const gpsTest = fs.readFileSync('gps-route-test.html', 'utf8');
+assert(gpsTest.includes('mapbox-token-runtime.js?v=29c'), 'GPS test must use the same safe runtime token setup');
+
+console.log('PASS Mapbox token stays out of GitHub and downloaded V29 can self-configure on first run');
