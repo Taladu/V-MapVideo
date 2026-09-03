@@ -1,5 +1,5 @@
 // V-MAPVIDEO V29.1 — Safe satellite overlay.
-// Keeps the V28/V29 map style and app layers intact; never calls map.setStyle().
+// Keeps the V28/V29 base style and all app layers intact; never replaces the style.
 (function () {
     'use strict';
 
