@@ -3,8 +3,11 @@ name: Validate V29.3 Safe Satellite Preload
 on:
   push:
     branches:
-      - v29-safe-satellite-layer\n      - v29.3-safe-satellite-preload
+      - main
+      - v29-safe-satellite-layer
+      - v29.3-safe-satellite-preload
       - v29.3-security-hardening
+      - v29.3-ci-main-postmerge
   pull_request:
     branches:
       - main
