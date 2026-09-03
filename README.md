@@ -9,13 +9,22 @@
 
 ## Cấu hình Mapbox an toàn cho bản lấy từ GitHub
 
-Token thật không được lưu trong GitHub. Trước khi chạy:
+Bản V29 hoàn chỉnh không còn yêu cầu tự tạo `mapbox-token.js`.
 
-1. Sao chép `mapbox-token.example.js` thành `mapbox-token.js`.
-2. Dán public token Mapbox bắt đầu bằng `pk.` vào `window.VMAP_MAPBOX_TOKEN`.
-3. Giới hạn token theo đúng domain dùng V-MapVideo trong tài khoản Mapbox.
+1. Mở V-Map bằng VS Code + Live Server.
+2. Lần đầu chạy, V-Map tự hiện hộp **Cấu hình Mapbox lần đầu**.
+3. Dán public token Mapbox bắt đầu bằng `pk.` rồi bấm **Lưu & mở V-Map**.
+4. Token chỉ được lưu trong `localStorage` của trình duyệt trên máy đang dùng, không được ghi vào source code và không được commit lên GitHub.
+5. Khi triển khai thật, giới hạn token theo đúng domain V-MapVideo trong tài khoản Mapbox.
 
-`mapbox-token.js` đã có trong `.gitignore`, nên token thật không bị commit nhầm.
+Nếu cần xóa token đã lưu để nhập lại, mở Console và chạy:
+
+```js
+window.VMAP_MAPBOX_TOKEN_RUNTIME.clear();
+location.reload();
+```
+
+`mapbox-token.js` vẫn nằm trong `.gitignore` để tránh commit nhầm nếu sau này dùng cấu hình local/deployment riêng.
 
 # NÂNG CẤP 1.3.2 — “Xem từ đây → điểm B”
 
