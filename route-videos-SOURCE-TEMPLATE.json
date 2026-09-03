@@ -1,0 +1,22 @@
+{
+  "version": "1.1",
+  "timeUnit": "seconds",
+  "note": "Copy file nay cho moi dot quay. YouTube luu video; V-MapVideo chi luu GPS/timestamp. Bat enabled=true chi sau khi da dien dung YouTube ID va GPS.",
+  "routes": [
+    {
+      "id": "video-gps-YYYYMMDD-001",
+      "name": "Ten doan duong",
+      "destinationName": "",
+      "direction": "",
+      "enabled": false,
+      "priority": 0,
+      "youtube": "PUT_YOUTUBE_VIDEO_ID_HERE",
+      "matchRadiusMeters": 80,
+      "timelineEdits": [],
+      "points": [
+        [106.700000, 10.770000, 0],
+        [106.700100, 10.770100, 1]
+      ]
+    }
+  ]
+}

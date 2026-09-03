@@ -1,0 +1,32 @@
+{
+  "version": "1.4",
+  "storageMode": "youtube-video-plus-lightweight-gps-metadata",
+  "note": "YouTube luu video nang. V-MapVideo chi luu JSON GPS/timeline nhe. A-B va B-A duoc nap truc tiep tu hai file rieng, khong can ghep route-videos.json bang tay.",
+  "sources": [
+    {
+      "id": "dji-action-4-20260716",
+      "file": "route-videos.json",
+      "enabled": true,
+      "priority": 0
+    },
+    {
+      "id": "test-chieu-di-a-b",
+      "file": "route-videos-TEST-CHIEU-DI-A-B.json",
+      "enabled": true,
+      "priority": 200
+    },
+    {
+      "id": "test-chieu-ve-b-a",
+      "file": "route-videos-TEST-CHIEU-VE-B-A.json",
+      "enabled": true,
+      "priority": 200
+    },
+    {
+      "id": "test-tu-ong-a-b-a-b",
+      "file": "route-videos-test-tu-ong-a-b-a-b.json",
+      "enabled": true,
+      "priority": 200
+    }
+  ],
+  "testSources": []
+}

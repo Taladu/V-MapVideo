@@ -1,0 +1,54 @@
+V28 SAFE DUAL GEOMETRY — VALIDATION CONTRACT
+
+BASELINE
+- Source baseline: agent/fix-v19-safe-exact-ab-reverse
+- Baseline SHA: e1511dfb82700e7baa29dcb8cc116f30b43cad72
+- Frozen rollback branch: golden-v19-field-proven-2026-08-27
+- Working branch: v28-safe-dual-geometry
+
+GOLDEN DATA MUST NOT CHANGE
+- route-videos.json = 4e9d63ccfa15bced6eeb270bb8ee14acf0b8785e
+- route-videos-TEST-CHIEU-DI-A-B.json = 5bca70719897adb83668b190d2790bd4ca376fdc
+- route-videos-TEST-CHIEU-VE-B-A.json = 74f7a580be488337c0de98d6986a39f0e38a60ea
+- route-videos-test-tu-ong-a-b-a-b.json = b60df2136f36448754b3c0612d8e948581b97b51
+- route-video-library.json = f01926102101db35ca590e08e08fe089f6768403
+
+V19 RESOLVER CONTRACT
+- CLICK_MATCH_METERS = 180
+- ROUTE_MATCH_METERS = 120
+- MAX_DIRECTION_DIFF_DEG = 70
+- Acceptance remains nearest GPS + full active-route distance + local direction score.
+- Candidate ranking remains direction diff -> GPS distance -> priority.
+
+DUAL GEOMETRY
+- fullRouteCoords is captured only from Directions route events and is never overwritten by rendered click geometry.
+- renderedRouteCoords is local click context used by directionScore.
+- When rendered Directions geometry is unavailable, derive a small local window around click from fullRouteCoords.
+- Full route is authority for GPS-to-active-route corridor membership.
+- Local route is authority for local bearing/direction.
+
+SAFE INFRASTRUCTURE
+- 20 px transparent GPS-video hit layer.
+- Directions and GPS hit layers queried separately.
+- 6 px Directions query box fallback around click.
+- GPS hard gaps (>180 m, >30 s, reverse/missing time) split only rendered overlay lines.
+- No safeStart/safeEnd trimming and no fixed coverage.
+- Source priority is sorted before duplicate-ID filtering.
+- Structured diagnostics record PLAY/NO_VIDEO, local/full bearing differences and rejection reasons.
+
+FORBIDDEN IN THIS RELEASE
+- fixedCoverageAt
+- safeStart
+- safeEnd
+- advanceOK
+- V27 interval-flush coverage authority
+- sequential map matching as a hard reject
+- any route-video JSON change
+- candidate ranking changes
+
+FIELD GATE BEFORE MERGE
+- Near A: no regression versus V19
+- Mid-route: no regression versus V19
+- D2: no regression versus V19
+- After D2: no regression versus V19
+- Capture window.VMAP_GPS_VIDEO_LAST for any remaining D2 failure and turn it into a permanent fixture.

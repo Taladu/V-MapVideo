@@ -1,0 +1,11 @@
+V19 SAFE EXACT A/B REVERSE
+
+- Correct Mapbox GL Directions 4.1.1 reverse selector: .js-reverse-inputs
+- Capture and stop the native reverse handler before it re-geocodes endpoints
+- Swap the exact numeric origin/destination coordinates
+- Cancel a pending GPS callback before applying the swap
+- Keep route rendering, GPS-video, 2D/3D and visible controls unchanged
+
+Automated checks:
+  node exact-ab-reverse-regression.test.cjs
+  node route-video-regression.test.cjs

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>V-MapVideo GPS Route Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.29.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.29.0/mapbox-gl.js"></script>
+  <style>
+    html,body,#map{margin:0;width:100%;height:100%;height:100dvh}
+    .status{position:absolute;z-index:5;top:12px;left:12px;right:12px;max-width:680px;background:#fff;padding:10px 12px;border-radius:10px;font:14px/1.4 system-ui;box-shadow:0 2px 12px #0002}
+    .route-video-popup{font:13px/1.4 system-ui;min-width:280px}.route-video-popup iframe{width:100%;aspect-ratio:16/9;border:0;margin-top:8px}.route-video-popup a{display:block;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="status" class="status">Đang tải tuyến GPS…</div>
+<script src="mapbox-token-runtime.js?v=29c"></script>
+<script>
+const statusEl=document.getElementById('status');
+const configuredToken=typeof window.VMAP_MAPBOX_TOKEN==='string'?window.VMAP_MAPBOX_TOKEN.trim():'';
+if(!configuredToken.startsWith('pk.')){
+  statusEl.textContent='❌ Chưa có Mapbox token. Hãy nhập token trong hộp cấu hình đang hiển thị.';
+  throw new Error('Thiếu window.VMAP_MAPBOX_TOKEN trong mapbox-token.js');
+}
+mapboxgl.accessToken=configuredToken;
+const TEST_VIDEO_ID='J5nzuOoTjMA';
+const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/taladu/cml928jj3004c01s95ns59gwa',center:[106.8049058,10.8295125],zoom:16});
+function coordsOf(p){return Array.isArray(p.coords)?[+p.coords[0],+p.coords[1]]:[+p.lng,+p.lat]}
+function rawTime(p){return Math.max(0,Number(p.tRaw??p.rawTime??p.t??p.time??0)||0)}
+function hav(a,b){const R=6371000,r=d=>d*Math.PI/180,dLat=r(b[1]-a[1]),dLng=r(b[0]-a[0]),l1=r(a[1]),l2=r(b[1]);const h=Math.sin(dLat/2)**2+Math.cos(l1)*Math.cos(l2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function fmt(s){s=Math.floor(Math.max(0,s));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
+async function init(){
+  const res=await fetch('route-videos.json',{cache:'no-store'}); if(!res.ok) throw new Error('HTTP '+res.status);
+  const data=await res.json(); const routes=Array.isArray(data)?data:(data.routes||[]); const route=routes.find(r=>r&&r.enabled!==false&&Array.isArray(r.points)&&r.points.length>1);
+  if(!route) throw new Error('Không tìm thấy tuyến GPS hợp lệ');
+  const pts=route.points.map(coordsOf).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));
+  route.youtube=TEST_VIDEO_ID;
+  const geo={type:'Feature',properties:{},geometry:{type:'LineString',coordinates:pts}};
+  map.addSource('gps-test',{type:'geojson',data:geo});
+  map.addLayer({id:'gps-test-line-hit',type:'line',source:'gps-test',paint:{'line-color':'rgba(0,0,0,0)','line-width':24}});
+  map.addLayer({id:'gps-test-line',type:'line',source:'gps-test',paint:{'line-color':'#ff2d55','line-width':7,'line-opacity':0.9}});
+  new mapboxgl.Marker({color:'#00a86b'}).setLngLat(pts[0]).setPopup(new mapboxgl.Popup().setText('GPS bắt đầu')).addTo(map);
+  new mapboxgl.Marker({color:'#7b2cbf'}).setLngLat(pts[pts.length-1]).setPopup(new mapboxgl.Popup().setText('GPS kết thúc')).addTo(map);
+  const bounds=pts.reduce((b,c)=>b.extend(c),new mapboxgl.LngLatBounds(pts[0],pts[0])); map.fitBounds(bounds,{padding:70,duration:0,maxZoom:17});
+  statusEl.textContent=`TEST GPS: ${route.name||route.id||'Tuyến'} • ${route.points.length} điểm • bấm trực tiếp vào VỆT HỒNG để mở YouTube đúng giây.`;
+  map.on('mouseenter','gps-test-line-hit',()=>map.getCanvas().style.cursor='pointer'); map.on('mouseleave','gps-test-line-hit',()=>map.getCanvas().style.cursor='');
+  map.on('click','gps-test-line-hit',e=>{
+    const click=[e.lngLat.lng,e.lngLat.lat]; let best=null;
+    route.points.forEach((p,i)=>{const c=coordsOf(p); const d=hav(click,c); if(!best||d<best.d) best={p,i,c,d};});
+    const t=rawTime(best.p); const embed=`https://www.youtube.com/embed/${TEST_VIDEO_ID}?start=${Math.floor(t)}&autoplay=1&playsinline=1&rel=0`; const watch=`https://www.youtube.com/watch?v=${TEST_VIDEO_ID}&t=${Math.floor(t)}s`;
+    new mapboxgl.Popup({maxWidth:'380px'}).setLngLat(best.c).setHTML(`<div class="route-video-popup"><b>🎬 GPS → YouTube ${fmt(t)}</b><br>Điểm #${best.i+1} • lệch ${Math.round(best.d)} m<iframe src="${embed}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><a href="${watch}" target="_blank" rel="noopener">Mở đúng đoạn ${fmt(t)} trên YouTube ↗</a></div>`).addTo(map);
+  });
+}
+map.on('load',()=>init().catch(err=>{console.error(err);statusEl.textContent='❌ '+err.message}));
+</script>
+</body>
+</html>

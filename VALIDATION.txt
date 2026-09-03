@@ -1,0 +1,14 @@
+V-MAPVIDEO CLEAN 1.3 — VALIDATION
+====================================
+[OK] script.js syntax
+[OK] gps-timeline-tool inline JS syntax
+[OK] places.json JSON
+[OK] route-videos.json JSON
+[OK] timeline mapping 100s → 3s — {500: 500, 600: 600, 650: 601.5, 700: 603, 800: 703}
+[OK] preserve/contains setupUserLocation();
+[OK] preserve/contains setup3DToggle();
+[OK] preserve/contains triggerFlycamAnimation
+[OK] preserve/contains openRouteVideoAtClick(e.lngLat)
+[OK] preserve/contains timelineEdits
+[OK] preserve/contains loadRouteVideos();
+[OK] preserve/contains loadDataAndInit();
