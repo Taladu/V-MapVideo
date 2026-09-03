@@ -1,0 +1,2 @@
+# Local Mapbox runtime credential. Never commit the real value.
+mapbox-token.js

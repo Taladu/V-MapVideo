@@ -1,0 +1,85 @@
+name: Validate V29 Safe Satellite Layer
+
+on:
+  push:
+    branches:
+      - v29-safe-satellite-layer
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          node --check gps-route-overlay.js
+          node --check script.js
+          node --check satellite-layer-toggle.js
+          node --check gps-video-library.js
+          node --check exact-ab-reverse-regression.test.cjs
+          node --check satellite-layer-toggle.test.cjs
+          node --check mapbox-token-safety.test.cjs
+          node --check v28-safe-dual-geometry.test.cjs
+          node --check v28-safe-hit-layer.test.cjs
+          node --check v28-safe-library-priority.test.cjs
+          node --check v28-route-event-geometry.test.cjs
+
+      - name: Validate JSON data
+        shell: bash
+        run: |
+          node -e "for (const f of ['places.json','route-video-library.json','route-videos.json','route-videos-TEST-CHIEU-DI-A-B.json','route-videos-TEST-CHIEU-VE-B-A.json','route-videos-test-tu-ong-a-b-a-b.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('PASS JSON')"
+
+      - name: Lock Golden V19 data blobs
+        shell: bash
+        run: |
+          test "$(git hash-object route-videos.json)" = "4e9d63ccfa15bced6eeb270bb8ee14acf0b8785e"
+          test "$(git hash-object route-videos-TEST-CHIEU-DI-A-B.json)" = "5bca70719897adb83668b190d2790bd4ca376fdc"
+          test "$(git hash-object route-videos-TEST-CHIEU-VE-B-A.json)" = "74f7a580be488337c0de98d6986a39f0e38a60ea"
+          test "$(git hash-object route-videos-test-tu-ong-a-b-a-b.json)" = "b60df2136f36448754b3c0612d8e948581b97b51"
+          test "$(git hash-object route-video-library.json)" = "f01926102101db35ca590e08e08fe089f6768403"
+          echo "PASS Golden V19 data blobs unchanged"
+
+      - name: Run regression tests
+        shell: bash
+        run: |
+          node exact-ab-reverse-regression.test.cjs
+          node v28-safe-hit-layer.test.cjs
+          node v28-safe-library-priority.test.cjs
+          node v28-route-event-geometry.test.cjs
+          node v28-safe-dual-geometry.test.cjs
+          node satellite-layer-toggle.test.cjs
+          node mapbox-token-safety.test.cjs
+
+      - name: Write build info
+        shell: bash
+        run: |
+          printf '{"commitSha":"%s","ref":"%s","build":"v29-safe-satellite-layer"}\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" > build-info.json
+
+      - name: Package V29 Safe Satellite Layer
+        shell: bash
+        run: |
+          zip -r V-MapVideo-CLEAN-29-safe-satellite-layer.zip . \
+            -x '.git/*' 'V-MapVideo-CLEAN-29-safe-satellite-layer.zip'
+
+      - name: Upload V29 Safe Satellite Layer
+        uses: actions/upload-artifact@v4
+        with:
+          name: V-MapVideo-CLEAN-29-safe-satellite-layer
+          path: V-MapVideo-CLEAN-29-safe-satellite-layer.zip
+          if-no-files-found: error
+          retention-days: 30

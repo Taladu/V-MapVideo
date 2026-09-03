@@ -1,0 +1,57 @@
+{
+  "version": "1.3",
+  "timeUnit": "seconds",
+  "note": "points.tRaw = thời gian GPS gốc. timelineEdits mô tả đoạn hậu kỳ bị rút ngắn; V-Map tự tính thời gian video.",
+  "routes": [
+    {
+      "id": "ben-thanh-tan-son-nhat-demo",
+      "name": "Bến Thành → Tân Sơn Nhất (MẪU)",
+      "direction": "Bến Thành đi sân bay",
+      "enabled": false,
+      "priority": 10,
+      "youtube": "PUT_YOUTUBE_VIDEO_ID_HERE",
+      "matchRadiusMeters": 120,
+      "timelineEdits": [
+        {
+          "start": 600,
+          "end": 700,
+          "keepSeconds": 3,
+          "label": "Đèn đỏ mẫu: 100 giây rút còn 3 giây"
+        }
+      ],
+      "points": [
+        {
+          "lng": 106.6981,
+          "lat": 10.7725,
+          "tRaw": 0
+        },
+        {
+          "lng": 106.697,
+          "lat": 10.781,
+          "tRaw": 180
+        },
+        {
+          "lng": 106.6905,
+          "lat": 10.7975,
+          "tRaw": 540
+        },
+        {
+          "lng": 106.685,
+          "lat": 10.805,
+          "tRaw": 650
+        },
+        {
+          "lng": 106.675,
+          "lat": 10.813,
+          "tRaw": 800
+        },
+        {
+          "lng": 106.6656,
+          "lat": 10.8188,
+          "tRaw": 1000
+        }
+      ],
+      "destinationName": "Sân bay Tân Sơn Nhất"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+/* V-MAPVIDEO CLEAN 1.3.2 — mobile viewport hardening
+   100vh remains the fallback in style.css; modern mobile browsers use dvh here. */
+@supports (height: 100dvh) {
+  .map-container { height: 100dvh; }
+  .bottom-panel {
+    height: 90dvh;
+    transform: translateY(calc(90dvh - 60px));
+  }
+}

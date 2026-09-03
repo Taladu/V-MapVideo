@@ -1,0 +1,256 @@
+/* V-MAPVIDEO CLEAN 1.0 — extracted verbatim from MASTER inline CSS */
+html, body { scroll-behavior: smooth; } 
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overscroll-behavior: none; } 
+        .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease; } 
+        .loader-spinner { border: 5px solid #f3f3f3; border-top: 5px solid #3386c0; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; } 
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } 
+        
+        .map-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; } 
+        .map-container::after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.15); opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 3; } 
+        .map-container.is-dimmed::after { opacity: 1; } 
+
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; } 
+
+        #ripple-effect {
+            position: absolute; border-radius: 50%; background-color: rgba(51, 134, 192, 0.5); width: 50px; height: 50px; transform: translate(-50%, -50%) scale(0); pointer-events: none; z-index: 4; opacity: 0; 
+        }
+        #ripple-effect.play { animation: ripple-wave 1.5s ease-out; }
+        @keyframes ripple-wave {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+            80% { opacity: 0.3; }
+            100% { transform: translate(-50%, -50%) scale(50); opacity: 0; }
+        }
+
+        .custom-popup {
+            position: absolute; z-index: 5; background-color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); width: 280px; display: none;  opacity: 0; transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s; transform-origin: 50% 100%;
+        }
+        .custom-popup h3 {
+            margin: 0; padding: 8px 12px; font-size: 16px; font-weight: bold; color: white; background-color: #3386c0; border-top-left-radius: 8px; border-top-right-radius: 8px;
+        }
+        .custom-popup .popup-actions { padding: 10px; }
+        
+        .custom-popup-close-btn {
+            position: absolute; top: 4px; right: 8px; background: none; border: none; font-size: 24px; color: white; cursor: pointer; line-height: 1; padding: 0; z-index: 1;
+        }
+        
+        /* CSS MỚI: Dành cho Thumbnail video */
+        .youtube-placeholder {
+            position: relative;
+            width: 100%;
+            height: 150px; /* Giữ chiều cao giống iframe cũ */
+            cursor: pointer;
+            background-color: #000; /* Màu nền đen */
+        }
+        .youtube-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border: none;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .youtube-placeholder:hover img {
+            opacity: 1;
+        }
+        .play-button-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            /* Đây là CSS để vẽ hình tam giác (nút Play) */
+            border-top: 18px solid transparent;
+            border-bottom: 18px solid transparent;
+            border-left: 28px solid rgba(255, 255, 255, 0.9);
+            pointer-events: none; /* Để click chuột ăn vào thẻ cha */
+            transition: transform 0.2s;
+        }
+        .youtube-placeholder:hover .play-button-overlay {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        #flycam-icon {
+            position: absolute; width: 80px; height: auto;
+            top: -40px; left: calc(50% - 40px);
+            transform-origin: center center;
+            opacity: 0; 
+            z-index: 6;
+        }
+        @keyframes hover-effect {
+            0%   { transform: translateY(0px); }
+            50%  { transform: translateY(-6px); }
+            100% { transform: translateY(0px); }
+        }
+        #flycam-icon.is-hovering {
+            animation: hover-effect 2s ease-in-out infinite; opacity: 1; 
+        }
+        @keyframes vmap-flycam-drop {
+            0% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        #flycam-icon.is-dropping {
+            opacity: 1; animation: vmap-flycam-drop 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        .mapboxgl-ctrl-directions { min-width: 100%!important; width: 100%!important; box-shadow: none!important; } 
+        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder--input { font-size: 18px !important; height: 48px; box-shadow: none!important; background-color: #f0f0f0!important; border-radius: 24px!important; border: none!important; } 
+        .mapbox-directions-route-summary { font-size: 14px; background-color: transparent !important; color: #333 !important; font-weight: bold; margin-top: 10px !important; box-shadow: none !important; } 
+        
+        .directions-details-toggle {
+            background-color: #f0f0f0; border: 1px solid #ddd; padding: 10px; width: 100%; text-align: left; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 8px;
+        }
+        .mapbox-directions-instructions {
+            max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 !important; margin: 0 !important;
+        }
+        .mapbox-directions-instructions.is-expanded {
+            max-height: 300px; overflow-y: auto;
+        }
+
+        .top-bar { 
+            position: absolute; top: 15px; left: 15px; right: 15px; background-color: white; border-radius: 12px;  box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 10px; z-index: 4; min-height: 110px;  transition: opacity 0.3s, transform 0.3s;  transform: translateY(-20px);  opacity: 0;  pointer-events: none;
+        }
+        .top-bar.is-visible { 
+            transform: translateY(0); opacity: 1;  pointer-events: auto;
+        }
+        
+        .bottom-panel { 
+            position: absolute; bottom: 0; left: 0; right: 0;  background-color: white;  border-top-left-radius: 20px; border-top-right-radius: 20px;  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);  z-index: 4; height: 90vh; display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);  transform: translateY(calc(90vh - 60px));
+        }
+        .panel-header {
+            padding: 0 20px; flex-shrink: 0; cursor: grab; touch-action: none;
+        }
+        .panel-handle { 
+            width: 40px; height: 5px; background-color: #ccc;  border-radius: 2.5px; margin: 8px auto;  
+        }
+        .panel-header .logo {
+             display: flex; align-items: center; padding-bottom: 8px;
+        }
+        .panel-content { 
+            overflow-y: auto; background: #fafafa; padding: 0 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
+        } 
+
+        .section-title { font-size: 18px; font-weight: bold; color: #333; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #eee; } 
+        
+        .search-bar-container {
+            padding: 5px 0 15px 0;
+        }
+        #searchInput {
+            width: 100%; padding: 12px 15px; font-size: 16px; border: 1px solid #ddd; border-radius: 25px; box-sizing: border-box; outline: none;
+        }
+        #searchInput:focus {
+            border-color: #3386c0; box-shadow: 0 0 5px rgba(51, 134, 192, 0.5);
+        }
+
+        .category-title { font-size: 16px; font-weight: bold; color: #3386c0; margin-top: 15px; margin-bottom: 5px; padding: 10px 5px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; } 
+        .location-items-container { display: none; padding-left: 10px; border-left: 2px solid #f0f0f0; margin-left: 5px; } 
+        .location-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; align-items: center; } 
+        .location-item:last-child { border-bottom: none; } 
+        .location-item img { width: 24px; height: 24px; margin-right: 15px; } 
+        .location-item h4 { margin: 0; font-size: 16px; color: #333; } 
+        .controls-grid { display: grid; grid-template-columns: 1fr; gap: 10px; } 
+        .controls-grid button { padding: 12px 16px; border-radius: 8px; border: 1px solid #ddd; background: #f7f7f7; font-size: 16px; cursor: pointer; text-align: center; transition: background-color 0.2s, color 0.2s; } 
+        button, select { touch-action: manipulation; } 
+        .controls-grid button:active { background-color: #ddd; } 
+        .controls-grid button:hover { background-color: #3386c0; color: white; } 
+        
+        .fab-btn-wrapper {
+            position: absolute; right: 15px; bottom: 0; z-index: 2; padding-bottom: calc(15px + env(safe-area-inset-bottom)); transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: none;
+        }
+        .fab-btn-wrapper.is-faded {
+            opacity: 0.4; pointer-events: none;
+        }
+        .fab-btn { 
+            position: relative; right: 0; bottom: 0; background-color: white; border: none; border-radius: 50%; width: 50px; height: 50px;  box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; pointer-events: auto;
+        }
+        .fab-btn:active { transform: scale(0.95); }
+        #locateUserBtnWrapper, #showDirectionsBtnWrapper, #toggle3DBtnWrapper { /* JS handles positioning */ }
+        
+        #showDirectionsBtn { 
+            background-color: #3386c0; width: 48px; height: 48px;
+        }
+        #toggle3DBtnWrapper {
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #toggle3DBtnWrapper.is-faded {
+            opacity: 1;
+            pointer-events: none;
+        }
+        #toggle3DBtn {
+            font-weight: bold; font-size: 16px; color: #3386c0;
+        }
+        #toggleSatelliteBtn {
+            font-size: 22px;
+            color: #3386c0;
+        }
+        #toggleSatelliteBtn.is-active {
+            color: white;
+            background-color: #3386c0;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 3px 10px rgba(0,0,0,0.3);
+        }
+        #toggleSatelliteBtn:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+
+        .youtube-links-overlay {
+            position: absolute; bottom: 0; left: 20px; z-index: 2; display: flex; flex-direction: column; gap: 10px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .youtube-links-overlay a { display: inline-block; padding: 10px 15px; background: #ff0000; color: white; border-radius: 8px; text-decoration: none; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-size: 14px; } 
+        .directions-btn { background-color: #3386c0; color: white; border: none; width: 100%; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; } 
+        .directions-btn:hover { background-color: #286a9c; } 
+
+        #toast-message {
+            position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 14px 22px; border-radius: 25px; z-index: 10000; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: bottom 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.5s; opacity: 0; pointer-events: none;
+        }
+        #toast-message.show {
+            bottom: 30px; opacity: 1;
+        }
+
+
+/* ==========================================================
+   V-MAPVIDEO CLEAN 1.3 — GPS TIMELINE POPUP
+   ========================================================== */
+.route-video-popup { width: 310px; max-width: 78vw; }
+.route-video-title { font-weight: 800; font-size: 15px; margin: 2px 0 5px; color: #1f2937; }
+.route-video-meta { font-size: 12px; line-height: 1.35; color: #6b7280; margin-bottom: 8px; }
+.route-video-popup iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    display: block;
+    border: 0;
+    border-radius: 9px;
+    background: #000;
+}
+.mapboxgl-popup-content { border-radius: 12px; padding: 12px; }
+
+
+/* 1.3: timeline, tuyến trùng nhau và công cụ GPS */
+.route-video-youtube-link {
+    display: block; margin-top: 9px; padding: 9px 10px; text-align: center;
+    text-decoration: none; border-radius: 8px; background: #f3f4f6;
+    color: #1f2937; font-size: 13px; font-weight: 700;
+}
+.route-candidate-picker { width: 310px; max-width: 78vw; }
+.route-candidate-btn {
+    width: 100%; display: flex; flex-direction: column; gap: 3px;
+    margin-top: 8px; padding: 10px 11px; border: 1px solid #dbe3ea;
+    border-radius: 9px; background: #fff; color: #1f2937;
+    text-align: left; cursor: pointer;
+}
+.route-candidate-btn:hover { background: #f3f8fc; border-color: #3386c0; }
+.route-candidate-btn span { color: #6b7280; font-size: 12px; }
+.tool-link-btn {
+    display: block; box-sizing: border-box; padding: 12px 16px;
+    border-radius: 8px; border: 1px solid #ddd; background: #f7f7f7;
+    color: #333; font-size: 16px; text-align: center; text-decoration: none;
+}
+.tool-link-btn:hover { background: #3386c0; color: white; }
+
+.route-video-note { display:inline-block; margin-top:4px; font-size:11px; color:#8a5a00; line-height:1.35; }

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V-MapVideo 1.3 | GPS → Timeline</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#17202a}
+*{box-sizing:border-box}body{margin:0;background:#f5f7f9}main{max-width:960px;margin:auto;padding:20px}
+.card{background:#fff;border:1px solid #e4e8ec;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,.04)}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:17px;margin:0 0 12px}p,.help{color:#5d6772;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+input,textarea{width:100%;border:1px solid #cfd7df;border-radius:9px;padding:10px;font:inherit}textarea{min-height:120px;resize:vertical}
+button{border:0;border-radius:9px;padding:11px 14px;font-weight:800;cursor:pointer}.primary{background:#3386c0;color:#fff}.secondary{background:#e9eef2;color:#26323c}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.status{padding:10px 12px;border-radius:9px;background:#eef6fb;color:#245f88;margin-top:10px;white-space:pre-wrap}
+.warn{background:#fff6df;color:#795b00}.ok{background:#eaf7ee;color:#236a36}code{background:#eef1f4;padding:2px 5px;border-radius:5px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #edf0f2;padding:8px;text-align:left}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+</style></head>
+<body><main>
+<div class="card"><h1>V-MapVideo 1.3 — GPS → Timeline</h1>
+<p>Nhận GPX/CSV/JSON, giữ thời gian GPS gốc và áp dụng các đoạn hậu kỳ bị rút ngắn như đèn đỏ.</p></div>
+
+<div class="card"><h2>1. Thông tin tuyến</h2><div class="grid">
+<div><label>Tên tuyến</label><input id="routeName" value="Tuyến mới"></div>
+<div><label>Hướng</label><input id="direction" placeholder="Bến Thành → Tân Sơn Nhất"></div>
+<div><label>YouTube video ID hoặc URL</label><input id="youtube" placeholder="Video ID hoặc URL"></div>
+<div><label>Bán kính khớp GPS (m)</label><input id="radius" type="number" min="20" max="1000" value="120"></div>
+<div><label>Khoảng lấy mẫu tối thiểu (giây)</label><input id="sampleSeconds" type="number" min="0" step="0.5" value="2"></div>
+<div><label>Độ ưu tiên tuyến</label><input id="priority" type="number" value="0"></div>
+</div></div>
+
+<div class="card"><h2>2. Nạp track GPS</h2>
+<input id="gpsFile" type="file" accept=".gpx,.csv,.json,text/csv,application/gpx+xml,application/json">
+<div class="help">GPX: <code>trkpt lat/lon + time</code>. CSV: lat/lng + t hoặc timestamp. JSON: mảng points.</div>
+<div id="gpsStatus" class="status">Chưa nạp dữ liệu.</div></div>
+
+<div class="card"><h2>3. Các đoạn hậu kỳ cần rút ngắn</h2>
+<p class="help">Mỗi dòng: <code>bắt đầu, kết thúc, giữ lại, ghi chú</code>. Nhập giây hoặc mm:ss / hh:mm:ss.<br>Ví dụ: <code>10:00,11:40,3,Đèn đỏ</code></p>
+<textarea id="edits" placeholder="10:00,11:40,3,Đèn đỏ&#10;25:20,26:10,3,Đèn đỏ"></textarea>
+<div class="actions"><button class="secondary" id="previewBtn">Kiểm tra timeline</button></div>
+<div id="editStatus" class="status">Chưa có đoạn cắt.</div></div>
+
+<div class="card"><h2>4. Xuất dữ liệu V-MapVideo</h2>
+<div class="actions"><button class="primary" id="buildBtn">Tạo route-videos.json</button>
+<button class="secondary" id="downloadBtn" disabled>Tải route-videos.json</button></div>
+<div id="buildStatus" class="status">Chưa tạo file.</div><div id="previewWrap" style="overflow:auto;margin-top:10px"></div></div>
+</main>
+<script>
+(()=>{
+let rawPoints=[],generatedJson=null;const $=id=>document.getElementById(id);
+function parseTimeValue(value){if(typeof value==='number')return value;const s=String(value??'').trim();if(!s)return NaN;if(/^\d+(\.\d+)?$/.test(s))return Number(s);const parts=s.split(':').map(Number);if(parts.length===2&&parts.every(Number.isFinite))return parts[0]*60+parts[1];if(parts.length===3&&parts.every(Number.isFinite))return parts[0]*3600+parts[1]*60+parts[2];const ms=Date.parse(s);return Number.isFinite(ms)?ms/1000:NaN}
+function normalizeEdits(edits){const sorted=edits.slice().sort((a,b)=>a.start-b.start);for(let i=0;i<sorted.length;i++){const e=sorted[i];if(![e.start,e.end,e.keepSeconds].every(Number.isFinite))throw new Error(`Đoạn #${i+1}: thời gian không hợp lệ.`);if(e.start<0||e.end<=e.start)throw new Error(`Đoạn #${i+1}: end phải lớn hơn start.`);if(e.keepSeconds<0||e.keepSeconds>e.end-e.start)throw new Error(`Đoạn #${i+1}: keep không hợp lệ.`);if(i&&e.start<sorted[i-1].end)throw new Error(`Đoạn #${i+1} chồng lấn đoạn trước.`)}return sorted}
+function parseEdits(){const lines=$('edits').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);return normalizeEdits(lines.map((line,index)=>{const p=line.split(',');if(p.length<3)throw new Error(`Dòng ${index+1}: cần start,end,keep.`);return{start:parseTimeValue(p[0]),end:parseTimeValue(p[1]),keepSeconds:parseTimeValue(p[2]),label:p.slice(3).join(',').trim()}}))}
+function rawToVideo(t,edits){let removedBefore=0;for(const e of edits){const d=e.end-e.start,removed=d-e.keepSeconds;if(t>=e.end){removedBefore+=removed;continue}if(t>e.start&&t<e.end){const r=(t-e.start)/d;return e.start-removedBefore+r*e.keepSeconds}if(t===e.end)return e.start-removedBefore+e.keepSeconds;if(t<=e.start)break}return Math.max(0,t-removedBefore)}
+function splitCSV(line){const out=[];let cur='',quote=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(quote&&line[i+1]==='"'){cur+='"';i++}else quote=!quote}else if(c===','&&!quote){out.push(cur.trim());cur=''}else cur+=c}out.push(cur.trim());return out}
+function parseCSV(text){const lines=text.split(/\r?\n/).filter(x=>x.trim());if(lines.length<2)throw new Error('CSV không đủ dữ liệu.');const headers=splitCSV(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9_]/g,''));const find=names=>headers.findIndex(h=>names.includes(h));const iLat=find(['lat','latitude']),iLng=find(['lng','lon','long','longitude']),iT=find(['traw','t','time','seconds','elapsed','elapsedseconds']),iStamp=find(['timestamp','datetime','date','gpstime','utc']);if(iLat<0||iLng<0||(iT<0&&iStamp<0))throw new Error('CSV cần lat/lng và t hoặc timestamp.');const rows=[];let baseAbs=null;for(let n=1;n<lines.length;n++){const c=splitCSV(lines[n]),lat=Number(c[iLat]),lng=Number(c[iLng]);if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;let t;if(iT>=0)t=parseTimeValue(c[iT]);else{const abs=parseTimeValue(c[iStamp]);if(!Number.isFinite(abs))continue;if(baseAbs===null)baseAbs=abs;t=abs-baseAbs}if(Number.isFinite(t)&&t>=0)rows.push({lng,lat,tRaw:t})}return rows}
+function parseGPX(text){const xml=new DOMParser().parseFromString(text,'application/xml');if(xml.querySelector('parsererror'))throw new Error('GPX/XML không hợp lệ.');const pts=[...xml.querySelectorAll('trkpt, rtept')];if(!pts.length)throw new Error('Không có trkpt/rtept.');let baseMs=null;const out=[];pts.forEach((pt,index)=>{const lat=Number(pt.getAttribute('lat')),lng=Number(pt.getAttribute('lon'));if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const tt=pt.querySelector('time')?.textContent?.trim();let tRaw;if(tt){const ms=Date.parse(tt);if(Number.isFinite(ms)){if(baseMs===null)baseMs=ms;tRaw=(ms-baseMs)/1000}}if(!Number.isFinite(tRaw))tRaw=index;out.push({lng,lat,tRaw:Math.max(0,tRaw)})});return out}
+function parseJSON(text){const data=JSON.parse(text);const points=Array.isArray(data)?data:(Array.isArray(data.points)?data.points:data.routes?.[0]?.points);if(!Array.isArray(points))throw new Error('JSON không có points.');return points.map(p=>({lng:Number(p.lng??p.coords?.[0]),lat:Number(p.lat??p.coords?.[1]),tRaw:Number(p.tRaw??p.rawTime??p.t??p.time)})).filter(p=>[p.lng,p.lat,p.tRaw].every(Number.isFinite)&&p.tRaw>=0)}
+function samplePoints(points,seconds){if(!points.length||!Number.isFinite(seconds)||seconds<=0)return points.slice();const sorted=points.slice().sort((a,b)=>a.tRaw-b.tRaw),out=[sorted[0]];let last=sorted[0].tRaw;for(let i=1;i<sorted.length-1;i++){if(sorted[i].tRaw-last>=seconds){out.push(sorted[i]);last=sorted[i].tRaw}}if(sorted.length>1&&out[out.length-1]!==sorted.at(-1))out.push(sorted.at(-1));return out}
+$('gpsFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const text=await file.text(),name=file.name.toLowerCase();if(name.endsWith('.gpx'))rawPoints=parseGPX(text);else if(name.endsWith('.csv'))rawPoints=parseCSV(text);else if(name.endsWith('.json'))rawPoints=parseJSON(text);else throw new Error('Chỉ hỗ trợ GPX, CSV, JSON.');if(rawPoints.length<2)throw new Error('Cần ít nhất 2 điểm GPS.');rawPoints.sort((a,b)=>a.tRaw-b.tRaw);$('gpsStatus').className='status ok';$('gpsStatus').textContent=`Đã nạp ${rawPoints.length} điểm. Thời lượng gốc ${rawPoints.at(-1).tRaw.toFixed(1)} giây.`}catch(err){rawPoints=[];$('gpsStatus').className='status warn';$('gpsStatus').textContent='Lỗi: '+err.message}});
+$('previewBtn').addEventListener('click',()=>{try{const edits=parseEdits(),rawEnd=rawPoints.length?rawPoints.at(-1).tRaw:0,videoEnd=rawToVideo(rawEnd,edits);$('editStatus').className='status ok';$('editStatus').textContent=edits.length?`Hợp lệ: ${edits.length} đoạn. Rút khoảng ${(rawEnd-videoEnd).toFixed(1)} giây. Timeline cuối ${videoEnd.toFixed(1)} giây.`:'Không có đoạn cắt.'}catch(err){$('editStatus').className='status warn';$('editStatus').textContent='Lỗi: '+err.message}});
+$('buildBtn').addEventListener('click',()=>{try{if(rawPoints.length<2)throw new Error('Hãy nạp GPS trước.');const edits=parseEdits(),points=samplePoints(rawPoints,Number($('sampleSeconds').value)),name=$('routeName').value.trim()||'Tuyến mới',slug=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'route';const route={id:slug,name,direction:$('direction').value.trim(),enabled:true,priority:Number($('priority').value)||0,youtube:$('youtube').value.trim(),matchRadiusMeters:Math.max(20,Number($('radius').value)||120),timelineEdits:edits,points};generatedJson={version:'1.3',timeUnit:'seconds',note:'Generated by V-MapVideo GPS Timeline Tool. points.tRaw = GPS gốc; timelineEdits = hậu kỳ.',routes:[route]};const endRaw=points.at(-1).tRaw,endVideo=rawToVideo(endRaw,edits);$('buildStatus').className='status ok';$('buildStatus').textContent=`Đã tạo ${points.length} điểm, ${edits.length} đoạn hậu kỳ. ${endRaw.toFixed(1)}s → ~${endVideo.toFixed(1)}s.`;$('downloadBtn').disabled=false;const rows=points.slice(0,8).map(p=>`<tr><td>${p.lat.toFixed(6)}</td><td>${p.lng.toFixed(6)}</td><td>${p.tRaw.toFixed(1)}</td><td>${rawToVideo(p.tRaw,edits).toFixed(1)}</td></tr>`).join('');$('previewWrap').innerHTML=`<table><thead><tr><th>Lat</th><th>Lng</th><th>GPS gốc</th><th>Video sau cắt</th></tr></thead><tbody>${rows}</tbody></table>`}catch(err){generatedJson=null;$('downloadBtn').disabled=true;$('buildStatus').className='status warn';$('buildStatus').textContent='Lỗi: '+err.message}});
+$('downloadBtn').addEventListener('click',()=>{if(!generatedJson)return;const blob=new Blob([JSON.stringify(generatedJson,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='route-videos.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+})();
+</script></body></html>
