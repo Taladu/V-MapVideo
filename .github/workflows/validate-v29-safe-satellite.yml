@@ -59,15 +59,15 @@ jobs:
           test "$(git hash-object route-video-library.json)" = "f01926102101db35ca590e08e08fe089f6768403"
           echo "PASS Golden V19 data blobs unchanged"
 
-      - name: Lock V29.2 core code
+      - name: Lock V29.3 hardened core code
         shell: bash
         run: |
-          test "$(git hash-object script.js)" = "7e354d1dc96ca208500d67a9c54a5d9c41083dd0"
+          test "$(git hash-object script.js)" = "27b0c9c38f5d0dccd7d43bb319d1133215c18f41"
           test "$(git hash-object gps-route-overlay.js)" = "c816f293638f3000c830b00a9b9c6bb22bb2a583"
           test "$(git hash-object gps-video-library.js)" = "68899332ee5ceadc43e52ad906ceca8fd761b5b5"
           test "$(git hash-object vmap-runtime-bridge.js)" = "9907e62e8e47bdc64680097a72262cf21ec3f16f"
           test "$(git hash-object exact-ab-reverse-regression.test.cjs)" = "5afcbede9e14f431645434e787da71f5b58bf1b6"
-          echo "PASS V29.2 core code unchanged"
+          echo "PASS V29.3 hardened script + GPS core hashes locked"
 
       - name: Run regression tests
         shell: bash
