@@ -1,11 +1,21 @@
-// V-MAPVIDEO V29.1 — Safe satellite overlay.
-// Keeps the V28/V29 base style and all app layers intact; never replaces the style.
+// V-MAPVIDEO V29.2 — Clean satellite overlay.
+// Safe rule: keep Directions, GPS-video, POI, popup and route data untouched.
 (function () {
     'use strict';
 
     const SOURCE_ID = 'vmap-satellite-source';
     const LAYER_ID = 'vmap-satellite-layer';
+    const CUSTOM_3D_LAYER_ID = '3d-buildings';
+    const BASEMAP_IMPORT_ID = 'basemap';
+    const STANDARD_SATELLITE_OVERRIDES = Object.freeze({
+        show3dObjects: false,
+        showPointOfInterestLabels: false,
+        showTransitLabels: false,
+        showPlaceLabels: false
+    });
+
     const button = document.getElementById('toggleSatelliteBtn');
+    const toggle3DButton = document.getElementById('toggle3DBtn');
     if (!button) return;
 
     let map = null;
@@ -14,6 +24,8 @@
     let lastError = null;
     let retryTimer = null;
     let retryCount = 0;
+    let basemapConfigSnapshot = null;
+    let custom3DRestoreOpacity;
 
     function notify(message) {
         const toast = document.getElementById('toast-message');
@@ -65,8 +77,8 @@
         if (map.getLayer(LAYER_ID)) return true;
 
         if (hasImports()) {
-            // Mapbox Standard: use MIDDLE so imagery sits above the opaque
-            // land/road artwork while labels, 3D buildings and V-Map overlays stay visible.
+            // Mapbox Standard: MIDDLE shows imagery above the opaque basemap artwork
+            // while V-Map custom overlays remain above it.
             const middle = baseLayerDefinition();
             middle.slot = 'middle';
             try {
@@ -87,7 +99,6 @@
                 console.warn('V-MapVideo: bottom slot unavailable, trying top-level raster.', bottomError);
             }
 
-            // Final compatibility fallback for unusual custom-import styles.
             map.addLayer(baseLayerDefinition());
             installedSlot = 'top-level';
             return true;
@@ -96,6 +107,139 @@
         map.addLayer(baseLayerDefinition(), findLegacyLabelLayer());
         installedSlot = 'before-labels';
         return true;
+    }
+
+    function canSafelyConfigureBasemap() {
+        return hasImports() &&
+            typeof map?.getConfigProperty === 'function' &&
+            typeof map?.setConfigProperty === 'function';
+    }
+
+    function captureBasemapConfig() {
+        if (basemapConfigSnapshot || !canSafelyConfigureBasemap()) {
+            return Boolean(basemapConfigSnapshot);
+        }
+
+        const snapshot = {};
+        let captured = 0;
+        for (const property of Object.keys(STANDARD_SATELLITE_OVERRIDES)) {
+            try {
+                const value = map.getConfigProperty(BASEMAP_IMPORT_ID, property);
+                if (value !== undefined) {
+                    snapshot[property] = value;
+                    captured += 1;
+                }
+            } catch (_) {
+                // Unsupported config keys are intentionally ignored.
+            }
+        }
+
+        if (captured > 0) basemapConfigSnapshot = snapshot;
+        return captured > 0;
+    }
+
+    function applyStandardSatelliteAppearance() {
+        if (!captureBasemapConfig()) return false;
+
+        let changed = 0;
+        for (const [property, value] of Object.entries(STANDARD_SATELLITE_OVERRIDES)) {
+            if (!Object.prototype.hasOwnProperty.call(basemapConfigSnapshot, property)) continue;
+            try {
+                map.setConfigProperty(BASEMAP_IMPORT_ID, property, value);
+                changed += 1;
+            } catch (error) {
+                console.warn(`V-MapVideo: bỏ qua basemap config ${property}.`, error);
+            }
+        }
+        return changed > 0;
+    }
+
+    function restoreStandardAppearance() {
+        if (!basemapConfigSnapshot || typeof map?.setConfigProperty !== 'function') {
+            basemapConfigSnapshot = null;
+            return;
+        }
+
+        for (const [property, value] of Object.entries(basemapConfigSnapshot)) {
+            try {
+                map.setConfigProperty(BASEMAP_IMPORT_ID, property, value);
+            } catch (error) {
+                console.warn(`V-MapVideo: chưa khôi phục được basemap config ${property}.`, error);
+            }
+        }
+        basemapConfigSnapshot = null;
+    }
+
+    function isNonZeroOpacity(value) {
+        return typeof value === 'number' ? value !== 0 : value !== undefined && value !== null;
+    }
+
+    function captureCustom3DOpacity(forceRefresh = false) {
+        if (!map?.getLayer?.(CUSTOM_3D_LAYER_ID) ||
+            typeof map?.getPaintProperty !== 'function') return false;
+
+        try {
+            const current = map.getPaintProperty(CUSTOM_3D_LAYER_ID, 'fill-extrusion-opacity');
+            if ((custom3DRestoreOpacity === undefined || forceRefresh) && isNonZeroOpacity(current)) {
+                custom3DRestoreOpacity = current;
+            }
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function hideCustom3DBuildings(forceRefresh = false) {
+        if (!map?.getLayer?.(CUSTOM_3D_LAYER_ID) ||
+            typeof map?.setPaintProperty !== 'function') return false;
+
+        captureCustom3DOpacity(forceRefresh);
+        try {
+            map.setPaintProperty(CUSTOM_3D_LAYER_ID, 'fill-extrusion-opacity', 0);
+            return true;
+        } catch (error) {
+            console.warn('V-MapVideo: chưa ẩn được lớp 3D tùy chỉnh.', error);
+            return false;
+        }
+    }
+
+    function restoreCustom3DBuildings() {
+        if (custom3DRestoreOpacity === undefined) return;
+        const restoreValue = custom3DRestoreOpacity;
+        custom3DRestoreOpacity = undefined;
+
+        if (!map?.getLayer?.(CUSTOM_3D_LAYER_ID) ||
+            typeof map?.setPaintProperty !== 'function') return;
+
+        try {
+            map.setPaintProperty(
+                CUSTOM_3D_LAYER_ID,
+                'fill-extrusion-opacity',
+                restoreValue
+            );
+        } catch (error) {
+            console.warn('V-MapVideo: chưa khôi phục được lớp 3D tùy chỉnh.', error);
+        }
+    }
+
+    function applySatelliteAppearance() {
+        if (!satelliteEnabled || !map) return;
+        applyStandardSatelliteAppearance();
+        hideCustom3DBuildings();
+    }
+
+    function restoreNormalAppearance() {
+        restoreStandardAppearance();
+        restoreCustom3DBuildings();
+    }
+
+    function syncAppearanceLater() {
+        setTimeout(() => {
+            if (satelliteEnabled) applySatelliteAppearance();
+        }, 0);
+        setTimeout(() => {
+            if (satelliteEnabled) applySatelliteAppearance();
+        }, 250);
     }
 
     function installSatelliteLayer() {
@@ -122,13 +266,19 @@
                 'visibility',
                 satelliteEnabled ? 'visible' : 'none'
             );
+
+            if (satelliteEnabled) {
+                applySatelliteAppearance();
+                syncAppearanceLater();
+            }
+
             lastError = null;
             button.disabled = false;
             updateButton();
             return true;
         } catch (error) {
             lastError = error;
-            button.disabled = false; // keep clickable so a later click can retry
+            button.disabled = false;
             console.warn('V-MapVideo: chưa thể nạp lớp vệ tinh.', error);
             return false;
         }
@@ -143,28 +293,56 @@
         }, 350);
     }
 
+    function resetAppearanceSnapshotsForNewStyle() {
+        basemapConfigSnapshot = null;
+        custom3DRestoreOpacity = undefined;
+        installedSlot = null;
+    }
+
     function connectMap(nextMap) {
         if (!nextMap || map === nextMap) return;
         map = nextMap;
         retryCount = 0;
-
-        // Let the button receive clicks even if the style is still finishing.
         button.disabled = false;
 
         map.on('style.load', () => {
             retryCount = 0;
+            resetAppearanceSnapshotsForNewStyle();
             installSatelliteLayer();
             scheduleRetry();
         });
+
         if (typeof map.once === 'function') {
             map.once('load', () => {
                 installSatelliteLayer();
+                if (satelliteEnabled) syncAppearanceLater();
                 scheduleRetry();
             });
         }
 
         installSatelliteLayer();
         scheduleRetry();
+    }
+
+    function setSatelliteEnabled(nextEnabled) {
+        if (!map?.getLayer?.(LAYER_ID)) return false;
+
+        satelliteEnabled = Boolean(nextEnabled);
+        map.setLayoutProperty(
+            LAYER_ID,
+            'visibility',
+            satelliteEnabled ? 'visible' : 'none'
+        );
+
+        if (satelliteEnabled) {
+            applySatelliteAppearance();
+            syncAppearanceLater();
+        } else {
+            restoreNormalAppearance();
+        }
+
+        updateButton();
+        return true;
     }
 
     button.addEventListener('click', () => {
@@ -180,17 +358,16 @@
         }
 
         try {
-            satelliteEnabled = !satelliteEnabled;
-            map.setLayoutProperty(
-                LAYER_ID,
-                'visibility',
-                satelliteEnabled ? 'visible' : 'none'
+            setSatelliteEnabled(!satelliteEnabled);
+            notify(
+                satelliteEnabled
+                    ? '🛰️ Vệ tinh sạch: đã ẩn khối 3D và nhãn phụ'
+                    : '🗺️ Đã khôi phục bản đồ thường'
             );
-            updateButton();
-            notify(satelliteEnabled ? '🛰️ Đã bật bản đồ vệ tinh' : '🗺️ Đã về bản đồ thường');
         } catch (error) {
             satelliteEnabled = false;
             lastError = error;
+            restoreNormalAppearance();
             updateButton();
             console.warn('V-MapVideo: bật/tắt vệ tinh thất bại.', error);
             notify('⚠️ Chưa bật được vệ tinh. V-Map sẽ tự thử lại.');
@@ -198,22 +375,50 @@
         }
     });
 
+    // script.js may change the custom 3D opacity when the 2D/3D button is pressed.
+    // Capture that intended value after its click handler, then keep satellite mode clean.
+    if (toggle3DButton) {
+        toggle3DButton.addEventListener('click', () => {
+            if (!satelliteEnabled) return;
+            setTimeout(() => {
+                if (!satelliteEnabled) return;
+                hideCustom3DBuildings(true);
+            }, 0);
+        });
+    }
+
     window.addEventListener('vmap:runtime-ready', event => {
         connectMap(event?.detail?.map);
     });
     if (window.vMapMap) connectMap(window.vMapMap);
 
     window.VMAP_SATELLITE_LAYER = Object.freeze({
-        version: '1.1.0-v29.1-safe-layer',
+        version: '1.2.0-v29.2-clean-satellite',
         sourceId: SOURCE_ID,
         layerId: LAYER_ID,
         isEnabled: () => satelliteEnabled,
+        syncAppearance: () => {
+            if (satelliteEnabled) {
+                applySatelliteAppearance();
+                return true;
+            }
+            return false;
+        },
         getStatus: () => ({
             connected: Boolean(map),
-            styleLoaded: Boolean(map && (typeof map.isStyleLoaded !== 'function' || map.isStyleLoaded())),
+            styleLoaded: Boolean(
+                map && (typeof map.isStyleLoaded !== 'function' || map.isStyleLoaded())
+            ),
             sourceReady: Boolean(map?.getSource?.(SOURCE_ID)),
             layerReady: Boolean(map?.getLayer?.(LAYER_ID)),
             slot: installedSlot,
+            cleanAppearance: satelliteEnabled,
+            basemapSnapshotKeys: basemapConfigSnapshot
+                ? Object.keys(basemapConfigSnapshot)
+                : [],
+            custom3DHidden: Boolean(
+                satelliteEnabled && map?.getLayer?.(CUSTOM_3D_LAYER_ID)
+            ),
             lastError: lastError ? String(lastError?.message || lastError) : null
         })
     });

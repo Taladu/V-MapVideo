@@ -1,4 +1,4 @@
-name: Validate V29 Safe Satellite Layer
+name: Validate V29.2 Clean Satellite
 
 on:
   push:
@@ -69,18 +69,18 @@ jobs:
       - name: Write build info
         shell: bash
         run: |
-          printf '{"commitSha":"%s","ref":"%s","build":"v29-safe-satellite-layer"}\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" > build-info.json
+          printf '{"commitSha":"%s","ref":"%s","build":"v29.2-clean-satellite"}\n' "$GITHUB_SHA" "$GITHUB_REF_NAME" > build-info.json
 
       - name: Package V29 Safe Satellite Layer
         shell: bash
         run: |
-          zip -r V-MapVideo-CLEAN-29-safe-satellite-layer.zip . \
-            -x '.git/*' 'V-MapVideo-CLEAN-29-safe-satellite-layer.zip'
+          zip -r V-MapVideo-CLEAN-29.2-clean-satellite.zip . \
+            -x '.git/*' 'V-MapVideo-CLEAN-29.2-clean-satellite.zip'
 
       - name: Upload V29 Safe Satellite Layer
         uses: actions/upload-artifact@v4
         with:
-          name: V-MapVideo-CLEAN-29-safe-satellite-layer
-          path: V-MapVideo-CLEAN-29-safe-satellite-layer.zip
+          name: V-MapVideo-CLEAN-29.2-clean-satellite
+          path: V-MapVideo-CLEAN-29.2-clean-satellite.zip
           if-no-files-found: error
           retention-days: 30

@@ -1,23 +1,23 @@
-# V29 SAFE SATELLITE LAYER
+# V29.2 CLEAN SATELLITE LAYER
 
-- Thêm nút 🛰️ để chuyển **Bản đồ thường ↔ Vệ tinh**.
-- Không dùng `map.setStyle()`: toàn bộ source/layer V28 vẫn còn nguyên.
-- Chế độ vệ tinh chỉ bật/tắt `visibility` của một raster layer độc lập.
-- Mapbox Standard dùng slot `bottom`; style cổ điển đặt ảnh ngay dưới lớp nhãn chữ.
-- Vệt chỉ đường, GPS-video, POI, popup, định vị và 2D/3D nằm phía trên ảnh vệ tinh.
+- Nút 🛰️ chuyển **Bản đồ thường ↔ Vệ tinh** bằng raster layer độc lập.
+- Không thay toàn bộ style, không xóa source/layer của V28/V29.
+- Mapbox Standard ưu tiên slot `middle` để ảnh vệ tinh hiện rõ.
+- Khi bật vệ tinh: ẩn 3D basemap, ẩn lớp `3d-buildings` tùy chỉnh, giảm nhãn POI/transit/place gây rối.
+- **Giữ nhãn đường**, GPS-video, Directions, POI V-Map, popup, điểm A/B và dữ liệu tuyến.
+- Khi tắt vệ tinh: khôi phục đúng trạng thái cấu hình basemap và độ mờ 3D trước đó.
+- Nếu người dùng đổi 2D/3D trong lúc đang ở vệ tinh, V29.2 ghi nhớ trạng thái mới nhưng vẫn giữ ảnh vệ tinh sạch; khi quay về bản đồ thường sẽ phục hồi đúng.
 - Logic A→B/B→A và toàn bộ dữ liệu GPS-video không thay đổi.
 
-## Cấu hình Mapbox an toàn cho bản lấy từ GitHub
-
-Bản V29 hoàn chỉnh không còn yêu cầu tự tạo `mapbox-token.js`.
+## Cấu hình Mapbox an toàn
 
 1. Mở V-Map bằng VS Code + Live Server.
 2. Lần đầu chạy, V-Map tự hiện hộp **Cấu hình Mapbox lần đầu**.
 3. Dán public token Mapbox bắt đầu bằng `pk.` rồi bấm **Lưu & mở V-Map**.
-4. Token chỉ được lưu trong `localStorage` của trình duyệt trên máy đang dùng, không được ghi vào source code và không được commit lên GitHub.
+4. Token chỉ lưu trong `localStorage` của trình duyệt trên máy đang dùng, không ghi vào source code và không commit lên GitHub.
 5. Khi triển khai thật, giới hạn token theo đúng domain V-MapVideo trong tài khoản Mapbox.
 
-Nếu cần xóa token đã lưu để nhập lại, mở Console và chạy:
+Nếu cần xóa token đã lưu để nhập lại:
 
 ```js
 window.VMAP_MAPBOX_TOKEN_RUNTIME.clear();
