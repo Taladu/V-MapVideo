@@ -1,5 +1,5 @@
-// V-MAPVIDEO V29 — Safe satellite overlay.
-// Deliberately never replaces the map style: V28 GPS-video, Directions and POI layers stay intact.
+// V-MAPVIDEO V29.1 — Safe satellite overlay.
+// Keeps the V28/V29 map style and app layers intact; never calls map.setStyle().
 (function () {
     'use strict';
 
@@ -10,6 +10,19 @@
 
     let map = null;
     let satelliteEnabled = false;
+    let installedSlot = null;
+    let lastError = null;
+    let retryTimer = null;
+    let retryCount = 0;
+
+    function notify(message) {
+        const toast = document.getElementById('toast-message');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toast.__vmapSatelliteTimer);
+        toast.__vmapSatelliteTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
 
     function updateButton() {
         button.classList.toggle('is-active', satelliteEnabled);
@@ -21,38 +34,73 @@
         button.title = satelliteEnabled ? 'Bản đồ thường' : 'Bản đồ vệ tinh';
     }
 
-    function getLayerDefinition() {
-        const definition = {
+    function baseLayerDefinition() {
+        return {
             id: LAYER_ID,
             type: 'raster',
             source: SOURCE_ID,
             layout: { visibility: satelliteEnabled ? 'visible' : 'none' },
             paint: {
                 'raster-opacity': 1,
-                'raster-fade-duration': 0
+                'raster-fade-duration': 0,
+                'raster-resampling': 'linear'
             }
         };
+    }
 
-        const style = map.getStyle?.();
-        if (Array.isArray(style?.imports) && style.imports.length > 0) {
-            // Mapbox Standard: bottom is above land/water and below roads/labels.
-            definition.slot = 'bottom';
-        }
-        return definition;
+    function hasImports() {
+        const style = map?.getStyle?.();
+        return Array.isArray(style?.imports) && style.imports.length > 0;
     }
 
     function findLegacyLabelLayer() {
-        const layers = map.getStyle?.()?.layers;
+        const layers = map?.getStyle?.()?.layers;
         if (!Array.isArray(layers)) return undefined;
         return layers.find(layer =>
             layer?.type === 'symbol' && layer.layout && layer.layout['text-field']
         )?.id;
     }
 
-    function installSatelliteLayer() {
-        if (!map || (typeof map.isStyleLoaded === 'function' && !map.isStyleLoaded())) {
-            return false;
+    function addSatelliteLayer() {
+        if (map.getLayer(LAYER_ID)) return true;
+
+        if (hasImports()) {
+            // Mapbox Standard: use MIDDLE so imagery sits above the opaque
+            // land/road artwork while labels, 3D buildings and V-Map overlays stay visible.
+            const middle = baseLayerDefinition();
+            middle.slot = 'middle';
+            try {
+                map.addLayer(middle);
+                installedSlot = 'middle';
+                return true;
+            } catch (middleError) {
+                console.warn('V-MapVideo: middle slot unavailable, trying bottom slot.', middleError);
+            }
+
+            const bottom = baseLayerDefinition();
+            bottom.slot = 'bottom';
+            try {
+                map.addLayer(bottom);
+                installedSlot = 'bottom';
+                return true;
+            } catch (bottomError) {
+                console.warn('V-MapVideo: bottom slot unavailable, trying top-level raster.', bottomError);
+            }
+
+            // Final compatibility fallback for unusual custom-import styles.
+            map.addLayer(baseLayerDefinition());
+            installedSlot = 'top-level';
+            return true;
         }
+
+        map.addLayer(baseLayerDefinition(), findLegacyLabelLayer());
+        installedSlot = 'before-labels';
+        return true;
+    }
+
+    function installSatelliteLayer() {
+        if (!map) return false;
+        if (typeof map.isStyleLoaded === 'function' && !map.isStyleLoaded()) return false;
 
         try {
             if (!map.getSource(SOURCE_ID)) {
@@ -63,13 +111,10 @@
                 });
             }
 
+            addSatelliteLayer();
+
             if (!map.getLayer(LAYER_ID)) {
-                const definition = getLayerDefinition();
-                if (definition.slot) {
-                    map.addLayer(definition);
-                } else {
-                    map.addLayer(definition, findLegacyLabelLayer());
-                }
+                throw new Error('Satellite raster layer was not created.');
             }
 
             map.setLayoutProperty(
@@ -77,37 +122,80 @@
                 'visibility',
                 satelliteEnabled ? 'visible' : 'none'
             );
+            lastError = null;
             button.disabled = false;
             updateButton();
             return true;
         } catch (error) {
-            button.disabled = true;
-            console.warn('V-MapVideo: chưa thể nạp lớp vệ tinh an toàn.', error);
+            lastError = error;
+            button.disabled = false; // keep clickable so a later click can retry
+            console.warn('V-MapVideo: chưa thể nạp lớp vệ tinh.', error);
             return false;
         }
+    }
+
+    function scheduleRetry() {
+        clearTimeout(retryTimer);
+        if (!map || retryCount >= 12 || map.getLayer?.(LAYER_ID)) return;
+        retryTimer = setTimeout(() => {
+            retryCount += 1;
+            if (!installSatelliteLayer()) scheduleRetry();
+        }, 350);
     }
 
     function connectMap(nextMap) {
         if (!nextMap || map === nextMap) return;
         map = nextMap;
-        button.disabled = true;
+        retryCount = 0;
 
-        // Also restores only this optional layer if a future module reloads the style.
-        map.on('style.load', installSatelliteLayer);
-        if (typeof map.isStyleLoaded !== 'function' || map.isStyleLoaded()) {
+        // Let the button receive clicks even if the style is still finishing.
+        button.disabled = false;
+
+        map.on('style.load', () => {
+            retryCount = 0;
             installSatelliteLayer();
+            scheduleRetry();
+        });
+        if (typeof map.once === 'function') {
+            map.once('load', () => {
+                installSatelliteLayer();
+                scheduleRetry();
+            });
         }
+
+        installSatelliteLayer();
+        scheduleRetry();
     }
 
     button.addEventListener('click', () => {
-        if (!map || button.disabled || !map.getLayer(LAYER_ID)) return;
-        satelliteEnabled = !satelliteEnabled;
-        map.setLayoutProperty(
-            LAYER_ID,
-            'visibility',
-            satelliteEnabled ? 'visible' : 'none'
-        );
-        updateButton();
+        if (!map) {
+            notify('⏳ Bản đồ đang khởi tạo, anh thử lại sau một giây.');
+            return;
+        }
+
+        if (!map.getLayer(LAYER_ID) && !installSatelliteLayer()) {
+            scheduleRetry();
+            notify('⏳ Đang nạp ảnh vệ tinh…');
+            return;
+        }
+
+        try {
+            satelliteEnabled = !satelliteEnabled;
+            map.setLayoutProperty(
+                LAYER_ID,
+                'visibility',
+                satelliteEnabled ? 'visible' : 'none'
+            );
+            updateButton();
+            notify(satelliteEnabled ? '🛰️ Đã bật bản đồ vệ tinh' : '🗺️ Đã về bản đồ thường');
+        } catch (error) {
+            satelliteEnabled = false;
+            lastError = error;
+            updateButton();
+            console.warn('V-MapVideo: bật/tắt vệ tinh thất bại.', error);
+            notify('⚠️ Chưa bật được vệ tinh. V-Map sẽ tự thử lại.');
+            scheduleRetry();
+        }
     });
 
     window.addEventListener('vmap:runtime-ready', event => {
@@ -116,9 +204,17 @@
     if (window.vMapMap) connectMap(window.vMapMap);
 
     window.VMAP_SATELLITE_LAYER = Object.freeze({
-        version: '1.0.0-v29-safe-layer',
+        version: '1.1.0-v29.1-safe-layer',
         sourceId: SOURCE_ID,
         layerId: LAYER_ID,
-        isEnabled: () => satelliteEnabled
+        isEnabled: () => satelliteEnabled,
+        getStatus: () => ({
+            connected: Boolean(map),
+            styleLoaded: Boolean(map && (typeof map.isStyleLoaded !== 'function' || map.isStyleLoaded())),
+            sourceReady: Boolean(map?.getSource?.(SOURCE_ID)),
+            layerReady: Boolean(map?.getLayer?.(LAYER_ID)),
+            slot: installedSlot,
+            lastError: lastError ? String(lastError?.message || lastError) : null
+        })
     });
 })();
